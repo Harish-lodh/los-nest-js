@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "trans-sunset-440106-g3",
+  "private_key_id": "626835985c017056b1bcc59114b3d4b386a4385b",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCMgYaielR4aY4R\n5yeTalzScNLScpXVtgQ6azqprOkuWt5RZf7dmy7oxb8g/M1rRB1sLmz/gT1XOeF3\n31HK0vJ3oy/JXayg5VXhId0Iei8wSqfkozko0QlKSLLvDqPK21ZuirLUMuuYi/2j\n0wdBnMyGBTYYafDp/sVeApWD8VAKGWCoUNyr+ITBjhJxCSDZWqhMuspuGHLUTh+B\nELKL7fqVitGqF6sPRossO67WAQ/uWALFZqGC6JslhF6tL3u1cRWJe5SxSwBfKE//\nSC1V2Yuw3lZ2dz7f3qzuQHK/9qR/+lxyvUXhxoSxDW/Ox5lqCQGPkXf7U236eGtI\ncBNRy4DlAgMBAAECggEAHzDXxvTaEJr6F15VqkN31J2IJ4CZY4ZS/Pb14FnKr+gr\nJy25vM8oxDK1wahtH41Q7MWHm9bAW781Hqu8GAbpHYbj4lNBsbwHawFd9HZPSGyi\nRb64PyfcZJmr4ybAVJWJY+O1XCbrpwMYrMf5eebJfkzk29mUyhUtEjgHofEtX/g7\nAINFb2s4Ak01jNaF0gUFtnVzf2dxG9laef6QfVXUFm8aiDsbMfarUQud2AI66pFF\njV6ZEAgFsPKMbUNPMvBUGWy0GI0ex6+d4zTSRiAua0p/79lc7xb9P41krIDtf/Oc\n6Dnr73JrHoTM5dWMrloORjUABY3giciGG8D+cwOgRwKBgQDDCdULQCtzNqVrnUJi\n2v/D5n5ihA4IJKnYNdh+yLqsGVxt4CNTCTxqnEmMkKRR8BI6TiXzuX4vt6lXb//p\n/l6GVibLRLoGzW7A2f3uS8o7wdsh5W/5IL7qtWDFTHKklvf25J6GDTFzGYFJijeA\nBsYQjzu/DiKS9tXPC6uQsK2oZwKBgQC4bDuKJNUX/cYRl5G7AF9iSuNuUCK1TpTC\n+OK6dszn+19wrBvSjecxjnpLzgpUxVYegCLasvhY/RycqVQgT7GTnNwaJIgwQNGc\nrisH3fJW0HU79+rm9wCkd0/QnEjU/HFISVkRyZ0S6a3/Weh8NdvcJ2KSjEoqi/Yo\n1foYpYgs0wKBgBOh+L0SL42AcbRcdyNGUjqhCBXYnyT4s9Qcz3crs4bBYsl4p3Wj\nV16P7uNkZ/YLiXovBaj8AhTBkx1HG+atAUzafTs25tbqdPyatPH41Rmg0PMfil70\nieNMcLpLkLq6q6lBqCdsSo8AgUAq1p1fkS53jJcV0CslB664yQNelYx/AoGAPoQy\nCrpBokhchEolFIcjzmYkgpiXq25f71f/Q8ZR37HOwJsXM2D3Jk1uF5RY3DOo5d35\n8rkIhuIGePTNl8ZsI+XgltwbboAKjlpcK+aI5/TySMnZz0Gb7iSj4cuYxNpubFqw\n3t7BaE/es9j+flyjkxWmzJbR7WpUn7MpfIFgkBECgYAZg2yc4D5YVr6aDy2bdy2G\nly3epmPJhfGX2GemsyrW70HdT4XCuAvRECd2ls5JSZZQSaAAgtBIFrLMQYht76As\nUL6tMweNAfklazpl+baT8OuEGeYZD+CFZ+AL/fvTriIMYcoa0hE5d3MOBZnqxSZf\nXTJBRedfvY+kRlMg8fGXmg==\n-----END PRIVATE KEY-----\n",
+  "client_email": "fintreefinance@trans-sunset-440106-g3.iam.gserviceaccount.com",
+  "client_id": "117877975577774451615",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/fintreefinance%40trans-sunset-440106-g3.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
