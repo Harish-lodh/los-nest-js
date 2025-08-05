@@ -5,7 +5,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-    console.log('✅ FRONTEND_URL:', process.env.FRONTEND_URL);
+    console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
   const app = await NestFactory.create(AppModule);
 
 
