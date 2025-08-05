@@ -1,0 +1,1 @@
+{"version":3,"file":"ocr.module.js","sourceRoot":"","sources":["../../../src/ocr/ocr.module.ts"],"names":[],"mappings":";;;;;;;;;AAAA,2CAAwC;AAExC,mEAA8D;AAE9D,qDAAiD;AAM1C,IAAM,SAAS,GAAf,MAAM,SAAS;CAAG,CAAA;AAAZ,8BAAS;oBAAT,SAAS;IAJrB,IAAA,eAAM,EAAC;QACN,WAAW,EAAE,CAAC,8BAAa,CAAC;QAC5B,SAAS,EAAE,CAAC,2CAAmB,CAAC;KACjC,CAAC;GACW,SAAS,CAAG"}
