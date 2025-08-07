@@ -1,4 +1,4 @@
-import * as dotenv from 'dotenv';
+import dotenv from 'dotenv';
 dotenv.config();
 
 import { NestFactory } from '@nestjs/core';
@@ -10,7 +10,7 @@ async function bootstrap() {
 
 
   app.enableCors({
-    origin: process.env.FRONTEND_URL,//this not working ?
+    origin: process.env.FRONTEND_URL,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     // credentials: true,
   });
