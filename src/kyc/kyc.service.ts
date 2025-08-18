@@ -21,7 +21,6 @@ export class KycService {
           'x-auth-key': process.env.PERFIOS_KEY,
         },
       });
-
       return response.data;
     } catch (error) {
       throw new Error(
