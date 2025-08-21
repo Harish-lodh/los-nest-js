@@ -12,4 +12,5 @@ export class AuthController {
     console.log("users",user)
     return this.authService.login(user);
   }
+
 }

@@ -13,7 +13,7 @@ export class KycService {
       dob: data.dob,
       consent: "Y",
     };
-    console.log(payload)
+    console.log(payload);
     try {
       const response = await axios.post(url, payload, {
         headers: {
