@@ -1,5 +1,5 @@
 // src/leads/lead.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, OneToMany, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { LeadKyc } from './lead-kyc.entity';
 import { LeadDocument } from './lead-document.entity';
 
@@ -26,6 +26,12 @@ export class Lead {
   @Column({ type: 'varchar', length: 1024, nullable: true }) leadImagePath!: string | null;
 
   @Column({ type: 'json', nullable: true }) customData!: Record<string, any> | null;
+
+   @CreateDateColumn({ type: 'timestamp' })
+  created_at!: Date;
+
+  @UpdateDateColumn({ type: 'timestamp' })
+  updated_at!: Date;
 
   @OneToOne(() => LeadKyc, (kyc) => kyc.lead, { cascade: true })
   @JoinColumn()

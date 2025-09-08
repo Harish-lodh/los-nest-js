@@ -23,7 +23,8 @@ import { LeadsModule } from './lead/lead.module';
       password: 'Harish@55',
       database: 'postgres', // Updated to match the existing database name
       autoLoadEntities: true,
-      synchronize: true,
+      logging: true, // Enable logging to debug SQL queries
+      synchronize: false,
     }),
     OcrModule,
     KycModule,

@@ -1,6 +1,7 @@
 // src/leads/leads.controller.ts
 import {
   Body, Controller, Post, UploadedFiles, UseInterceptors, BadRequestException,
+  Get,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { uploadsStorage } from './multer.config';
@@ -46,4 +47,11 @@ export class LeadsController {
 
     return this.leadsService.create(dto, files);
   }
+
+   @Get()
+  async getLeads() {
+    return this.leadsService.findAll();
+  }
+
+  
 }

@@ -7,7 +7,7 @@ import { DataSource } from 'typeorm';
 export class LeadFieldsService {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
-  // Protected columns that cannot be deleted
+  // ✅ Keep this set *lowercase* because we compare lowercased names
   private readonly PROTECTED_COLUMNS = new Set([
     'id',
     'created_at',
@@ -15,9 +15,9 @@ export class LeadFieldsService {
     'status',
     'lan',
     'partner_loan_id',
-    'leadOwner',
-    'firstName',
-    'lastName',
+    'leadowner',
+    'firstname',
+    'lastname',
     'email',
     'mobile',
     'company',
@@ -25,13 +25,12 @@ export class LeadFieldsService {
     'city',
     'state',
     'country',
-    'zipCode',
+    'zipcode',
     'description',
-    'leadImagePath',
-    'customData',
+    'leadimagepath',
+    'customdata',
   ]);
 
-  // Map UI types to PostgreSQL column types
   private readonly UI_TYPE_TO_DB_TYPE: Record<string, string> = {
     text: 'VARCHAR(255)',
     email: 'VARCHAR(255)',
@@ -40,65 +39,80 @@ export class LeadFieldsService {
     date: 'DATE',
   };
 
-  // Fetch all columns of the leads table
+  // Simple default per type when NOT NULL is requested
+  private defaultFor(dbType: string): string {
+    const t = dbType.toUpperCase();
+    if (t.startsWith('VARCHAR')) return `''`;
+    if (t.startsWith('NUMERIC')) return `0`;
+    if (t.startsWith('INTEGER')) return `0`;
+    if (t === 'DATE') return `CURRENT_DATE`;
+    return `''`;
+  }
+
   async getColumns() {
-    const query = `SELECT column_name AS name, data_type AS dbType, is_nullable AS isNullable
+    const query = `
+      SELECT
+        column_name    AS name,
+        data_type      AS dbType,
+        is_nullable    AS isNullable
       FROM information_schema.columns
-      WHERE table_name = 'leads' AND table_schema = 'public' AND column_name NOT IN ('customData', 'id', 'kycId', 'leadImagePath') `;
-    const columns = await this.dataSource.query(query);
-    console.log('Raw query results:', JSON.stringify(columns, null, 2)); // Debug log
-    return columns.map((col: any) => ({
-      name: col.name || col.column_name,
-      dbType: (col.dbtype || col.data_type || 'UNKNOWN').toUpperCase(),
-      isNullable: (col.isNullable || col.is_nullable) === 'YES',
+      WHERE table_name = 'leads'
+        AND table_schema = 'public'
+        AND column_name NOT IN ('customData', 'id', 'kycId', 'leadImagePath')
+      ORDER BY ordinal_position
+    `;
+    const rows = await this.dataSource.query(query);
+   // console.log(rows)
+    return rows.map((col: any) => ({
+      name: col.name ?? col.column_name,
+      dbType: (col.dbtype ?? 'UNKNOWN').toUpperCase(),
+      isNullable: (col.isnullable ?? col.isNullable ) === 'YES',
     }));
   }
 
-  // Add a new column to the leads table
-  async addColumn(name: string, uiType: string) {
-    // Validate column name
+  async addColumn(name: string, uiType: string, isNullable: boolean) {
     const cleanName = name.trim().toLowerCase().replace(/\s+/g, '_');
-    if (!cleanName.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
-      throw new BadRequestException('Invalid column name. Use letters, numbers, and underscores only.');
+    if (!cleanName.match(/^[a-z_][a-z0-9_]*$/)) {
+      throw new BadRequestException(
+        'Invalid column name. Use letters, numbers, and underscores; must start with a letter/underscore.'
+      );
     }
 
-    // Check if column already exists
-    const existingColumns = await this.getColumns();
-    if (existingColumns.some((col: any) => col.name.toLowerCase() === cleanName)) {
+    const existing = await this.getColumns();
+    if (existing.some((c: any) => c.name.toLowerCase() === cleanName)) {
       throw new BadRequestException(`Column '${cleanName}' already exists`);
     }
 
-    // Validate UI type
     const dbType = this.UI_TYPE_TO_DB_TYPE[uiType];
-    if (!dbType) {
-      throw new BadRequestException(`Invalid type: ${uiType}`);
-    }
+    if (!dbType) throw new BadRequestException(`Invalid type: ${uiType}`);
 
-    // Run ALTER TABLE to add the column
-    const query = `ALTER TABLE leads ADD COLUMN "${cleanName}" ${dbType} NULL`;
-    await this.dataSource.query(query);
+    // ⚠️ Postgres: NOT NULL requires a default or a two-step change
+    return this.dataSource.transaction(async (qr) => {
+      if (isNullable) {
+        // Simple path
+        await qr.query(`ALTER TABLE leads ADD COLUMN "${cleanName}" ${dbType} NULL`);
+      } else {
+        // Safe NOT NULL path: add with DEFAULT, backfilled instantly by PG, then drop default
+        const def = this.defaultFor(dbType);
+        await qr.query(`ALTER TABLE leads ADD COLUMN "${cleanName}" ${dbType} DEFAULT ${def}`);
+        await qr.query(`ALTER TABLE leads ALTER COLUMN "${cleanName}" SET NOT NULL`);
+        await qr.query(`ALTER TABLE leads ALTER COLUMN "${cleanName}" DROP DEFAULT`);
+      }
 
-    return { message: `Column '${cleanName}' added successfully` };
+      return { message: `Column '${cleanName}' added successfully` };
+    });
   }
 
-  // Delete a column from the leads table
   async deleteColumn(name: string) {
     const cleanName = name.trim().toLowerCase();
     if (this.PROTECTED_COLUMNS.has(cleanName)) {
       throw new ForbiddenException(`Column '${cleanName}' is protected and cannot be deleted`);
     }
-
-    // Check if column exists
-    const existingColumns = await this.getColumns();
-    console.log(existingColumns)
-    if (!existingColumns.some((col: any) => col.name.toLowerCase() === cleanName)) {
+    const existing = await this.getColumns();
+    if (!existing.some((c: any) => c.name.toLowerCase() === cleanName)) {
       throw new BadRequestException(`Column '${cleanName}' does not exist`);
     }
-
-    // Run ALTER TABLE to drop the column
-    const query = `ALTER TABLE leads DROP COLUMN "${cleanName}"`;
-    await this.dataSource.query(query);
-
+    await this.dataSource.query(`ALTER TABLE leads DROP COLUMN "${cleanName}"`);
     return { message: `Column '${cleanName}' deleted successfully` };
   }
 }

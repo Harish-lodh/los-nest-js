@@ -56,4 +56,10 @@ export class LeadsService {
 
     return await this.leadRepo.save(lead);
   }
+
+  async findAll() {
+    return this.leadRepo.find({
+      order: { created_at: 'DESC' }, // latest first
+    });
+  }
 }

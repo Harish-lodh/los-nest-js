@@ -12,12 +12,14 @@ export class LeadFieldsController {
   }
 
   @Post()
-  async addColumn(@Body() body: { name: string; uiType: string }) {
-    const { name, uiType } = body;
+  async addColumn(@Body() body: { name: string; uiType: string;isNullable:boolean }) {
+    const { name, uiType,isNullable } = body;
+    console.log(body)
     if (!name || !uiType) {
       throw new BadRequestException('Name and uiType are required');
     }
-    return this.leadFieldsService.addColumn(name, uiType);
+    
+    return this.leadFieldsService.addColumn(name, uiType,isNullable);
   }
 
   @Delete(':name')
