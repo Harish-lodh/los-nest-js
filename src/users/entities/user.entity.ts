@@ -12,7 +12,7 @@ export class User {
   @Column({ length: 150 })
   email: string;
 
-  @Column({ name: 'password', nullable: false }) // explicitly NOT NULL
+  @Column({ name: 'password', nullable: false}) // explicitly NOT NULL
   password: string;
 
   @Column({ length: 50 })

@@ -7,7 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 // import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
-import { LeadModule } from './lead/lead.module';
+import { LeadsModule } from './lead/lead.module';
 
 @Module({
   imports: [
@@ -23,13 +23,13 @@ import { LeadModule } from './lead/lead.module';
       password: 'Harish@55',
       database: 'postgres', // Updated to match the existing database name
       autoLoadEntities: true,
-      synchronize: false,
+      synchronize: true,
     }),
     OcrModule,
     KycModule,
     UsersModule,
     AuthModule,
-    LeadModule,
+    LeadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
