@@ -33,15 +33,16 @@ export class UsersController {
   }
 
   // GET /users/:id
-  @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.usersService.findOne(id);
-  }
+@Get(':id')
+findOne(@Param('id') id: string) {
+  return this.usersService.findOne(id);
+}
+
 
   // PATCH /users/:id
   @Patch(':id')
   update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() dto: UpdateUserDto,
   ) {
     return this.usersService.update(id, dto);
@@ -49,7 +50,7 @@ export class UsersController {
 
   // DELETE /users/:id
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
+  remove(@Param('id') id: string) {
     return this.usersService.remove(id);
   }
 }

@@ -1,42 +1,41 @@
-// src/leads/lead.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, OneToMany, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { LeadKyc } from './lead-kyc.entity';
-import { LeadDocument } from './lead-document.entity';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument } from 'mongoose';
+import { LeadKycSubdoc, LeadKycSubdocSchema } from './lead-kyc.entity';
 
-@Entity('leads')
+export type LeadDocument = HydratedDocument<Lead>;
+
+@Schema({
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+  collection: 'leads',
+})
 export class Lead {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+  @Prop({ type: String, trim: true, default: null }) leadOwner?: string;
 
-  @Column({ type: 'varchar', length: 150, nullable: true }) leadOwner!: string | null;
-  @Column({ type: 'varchar', length: 100 }) firstName!: string;
-  @Column({ type: 'varchar', length: 100 }) lastName!: string;
-  @Column({ type: 'varchar', length: 150 }) email!: string;
-  @Column({ type: 'varchar', length: 20 }) mobile!: string;
-  @Column({ type: 'varchar', length: 150, nullable: true }) company!: string | null;
+  @Prop({ type: String, required: true, trim: true, maxlength: 100 }) firstName!: string;
+  @Prop({ type: String, required: true, trim: true, maxlength: 100 }) lastName!: string;
 
-  @Column({ type: 'varchar', length: 200, nullable: true }) street!: string | null;
-  @Column({ type: 'varchar', length: 120, nullable: true }) city!: string | null;
-  @Column({ type: 'varchar', length: 120, nullable: true }) state!: string | null;
-  @Column({ type: 'varchar', length: 120, nullable: true }) country!: string | null;
-  @Column({ type: 'varchar', length: 20, nullable: true }) zipCode!: string | null;
+  @Prop({ type: String, required: true, trim: true, lowercase: true, maxlength: 150 })
+  email!: string;
 
-  @Column({ type: 'text', nullable: true }) description!: string | null;
+  @Prop({ type: String, required: true, trim: true, maxlength: 20 }) mobile!: string;
+  @Prop({ type: String, trim: true, maxlength: 150, default: null }) company?: string;
 
-  @Column({ type: 'varchar', length: 1024, nullable: true }) leadImagePath!: string | null;
+  @Prop({ type: String, trim: true, maxlength: 200, default: null }) street?: string;
+  @Prop({ type: String, trim: true, maxlength: 120, default: null }) city?: string;
+  @Prop({ type: String, trim: true, maxlength: 120, default: null }) state?: string;
+  @Prop({ type: String, trim: true, maxlength: 120, default: null }) country?: string;
+  @Prop({ type: String, trim: true, maxlength: 20,  default: null }) zipCode?: string;
 
-  @Column({ type: 'json', nullable: true }) customData!: Record<string, any> | null;
+  @Prop({ type: String, default: null }) description?: string;
 
-   @CreateDateColumn({ type: 'timestamp' })
-  created_at!: Date;
+  @Prop({ type: String, trim: true, maxlength: 1024, default: null }) leadImagePath?: string |null;
 
-  @UpdateDateColumn({ type: 'timestamp' })
-  updated_at!: Date;
+  @Prop({ type: Object, default: null }) customData?: Record<string, any>;
 
-  @OneToOne(() => LeadKyc, (kyc) => kyc.lead, { cascade: true })
-  @JoinColumn()
-  kyc!: LeadKyc;
-
-  @OneToMany(() => LeadDocument, (d) => d.lead, { cascade: true })
-  documents!: LeadDocument[];
+  @Prop({ type: LeadKycSubdocSchema, default: undefined }) kyc?: LeadKycSubdoc;
 }
+
+export const LeadSchema = SchemaFactory.createForClass(Lead);
+LeadSchema.index({ email: 1 });
+LeadSchema.index({ mobile: 1 });
+LeadSchema.index({ created_at: -1 });

@@ -50,7 +50,7 @@ export class LeadFieldsService {
   }
 
   async getColumns() {
-    const query = `
+    const query = `   
       SELECT
         column_name    AS name,
         data_type      AS dbType,
@@ -58,7 +58,7 @@ export class LeadFieldsService {
       FROM information_schema.columns
       WHERE table_name = 'leads'
         AND table_schema = 'public'
-        AND column_name NOT IN ('customData', 'id', 'kycId', 'leadImagePath')
+        AND column_name NOT IN ('customData', 'id', 'kycId', 'leadImagePath','created_at','updated_at')
       ORDER BY ordinal_position
     `;
     const rows = await this.dataSource.query(query);

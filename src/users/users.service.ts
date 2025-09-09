@@ -1,65 +1,71 @@
+// users/users.service.ts
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from '../users/entities/user.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import { User, UserDocument } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
+function sanitize(u: UserDocument | (User & { _id: any })) {
+  const { password, __v, ...rest } = (u as any).toObject ? (u as any).toObject() : u;
+  return rest;
+}
+
 @Injectable()
 export class UsersService {
-  constructor(
-    @InjectRepository(User)
-    private readonly usersRepo: Repository<User>,
-  ) {}
+  constructor(@InjectModel(User.name) private readonly usersModel: Model<UserDocument>) {}
 
-  async create(dto: CreateUserDto): Promise<Omit<User, 'password'>> {
-    const existing = await this.usersRepo.findOne({ where: { email: dto.email } });
-    if (existing) throw new ConflictException('Email already in use');
+  async create(dto: CreateUserDto) {
+    const exists = await this.usersModel.exists({ email: dto.email.toLowerCase() });
+    if (exists) throw new ConflictException('Email already in use');
 
-    const user = this.usersRepo.create({
+    const created = await this.usersModel.create({
       full_name: dto.full_name,
-      email: dto.email,
-      password: dto.password,   // ⚠️ plain-text (not recommended)
-      role: dto.role,
+      email: dto.email.toLowerCase(),
+      password: dto.password,   // ⚠️ stored as plain text
+      role: dto.role ?? 'user',
     });
-    const saved = await this.usersRepo.save(user);
-    const { password, ...safe } = saved;
-    return safe as any;
+
+    return sanitize(created);
   }
 
-  async findAll(): Promise<Omit<User, 'password'>[]> {
-    const users = await this.usersRepo.find();
-    return users.map(({ password, ...u }) => u as any);
+  async findAll() {
+    const users = await this.usersModel.find().lean();
+    return users.map(u => sanitize(u as any));
   }
 
-  async findOne(id: number): Promise<Omit<User, 'password'>> {
-    const user = await this.usersRepo.findOne({ where: { id } });
+  async findOne(id: string) {
+    if (!Types.ObjectId.isValid(id)) throw new NotFoundException('User not found');
+    const user = await this.usersModel.findById(id).lean();
     if (!user) throw new NotFoundException('User not found');
-    const { password, ...safe } = user;
-    return safe as any;
+    return sanitize(user as any);
   }
 
-  async findByEmail(email: string): Promise<User | null> {
-    return this.usersRepo.findOne({ where: { email } });
+  async findByEmail(email: string) {
+    return this.usersModel.findOne({ email: email.toLowerCase() }).exec();
   }
 
-  async update(id: number, dto: UpdateUserDto): Promise<Omit<User, 'password'>> {
-    const user = await this.usersRepo.findOne({ where: { id } });
-    if (!user) throw new NotFoundException('User not found');
+  async update(id: string, dto: UpdateUserDto) {
+    if (!Types.ObjectId.isValid(id)) throw new NotFoundException('User not found');
 
-    if (dto.full_name !== undefined) user.full_name = dto.full_name;
-    if (dto.email !== undefined) user.email = dto.email;
-    if (dto.role !== undefined) user.role = dto.role;
-    if (dto.password !== undefined) user.password = dto.password; // ⚠️ plain-text
+    const update: any = {};
+    if (dto.full_name !== undefined) update.full_name = dto.full_name;
+    if (dto.email !== undefined) update.email = dto.email.toLowerCase();
+    if (dto.role !== undefined) update.role = dto.role;
+    if (dto.password !== undefined) update.password = dto.password;
 
-    const saved = await this.usersRepo.save(user);
-    const { password, ...safe } = saved;
-    return safe as any;
+    const saved = await this.usersModel
+      .findByIdAndUpdate(id, { $set: update }, { new: true })
+      .lean();
+
+    if (!saved) throw new NotFoundException('User not found');
+    return sanitize(saved as any);
   }
 
-  async remove(id: number): Promise<{ deleted: boolean }> {
-    const result = await this.usersRepo.delete(id);
-    if (!result.affected) throw new NotFoundException('User not found');
+  async remove(id: string) {
+    if (!Types.ObjectId.isValid(id)) throw new NotFoundException('User not found');
+    const res = await this.usersModel.findByIdAndDelete(id).lean();
+    if (!res) throw new NotFoundException('User not found');
     return { deleted: true };
   }
 }

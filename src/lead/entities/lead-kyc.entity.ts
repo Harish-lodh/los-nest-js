@@ -1,34 +1,21 @@
-// lead-kyc.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne } from 'typeorm';
-import { Lead } from './lead.entity';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
-@Entity('lead_kyc')
-export class LeadKyc {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
+@Schema({ _id: false })
+export class LeadKycSubdoc {
+  @Prop({ type: String, trim: true, default: null }) name?: string;
+  @Prop({ type: String, trim: true, default: null }) gender?: string;
+  @Prop({ type: String, trim: true, default: null }) dob?: string; // keep as string to match old model
+  @Prop({ type: String, trim: true, default: null }) aadhaarNumber?: string;
+  @Prop({ type: String, default: null }) address?: string;
 
-  // ---------- extracted fields ----------
-  @Column({ type: 'varchar', length: 150, nullable: true }) name!: string | null;
-  @Column({ type: 'varchar', length: 20,  nullable: true }) gender!: string | null;
-  @Column({ type: 'date',               nullable: true })   dob!: string | null;
-  @Column({ type: 'varchar', length: 20,  nullable: true }) aadhaarNumber!: string | null;
-  @Column({ type: 'text',               nullable: true })   address!: string | null;
+  @Prop({ type: String, trim: true, default: null }) panNumber?: string;
+  @Prop({ type: String, trim: true, default: null }) panHolderName?: string;
+  @Prop({ type: String, trim: true, default: null }) panFatherName?: string;
+  @Prop({ type: String, trim: true, default: null }) panDob?: string;
 
-  @Column({ type: 'varchar', length: 20,  nullable: true }) panNumber!: string | null;
-  @Column({ type: 'varchar', length: 150, nullable: true }) panHolderName!: string | null;
-  @Column({ type: 'varchar', length: 150, nullable: true }) panFatherName!: string | null;
-  @Column({ type: 'date',               nullable: true })   panDob!: string | null;
-
-  // ---------- file path columns (STRING!) ----------
-  @Column({ type: 'varchar', length: 1024, nullable: true })
-  aadhaarFrontPath!: string | null;
-
-  @Column({ type: 'varchar', length: 1024, nullable: true })
-  aadhaarBackPath!: string | null;
-
-  @Column({ type: 'varchar', length: 1024, nullable: true })
-  panPath!: string | null;
-
-  @OneToOne(() => Lead, (lead) => lead.kyc)
-  lead!: Lead;
+  @Prop({ type: String, trim: true, default: null }) aadhaarFrontPath?: string | null;
+  @Prop({ type: String, trim: true, default: null }) aadhaarBackPath?: string | null;
+  @Prop({ type: String, trim: true, default: null }) panPath?: string | null;
 }
+
+export const LeadKycSubdocSchema = SchemaFactory.createForClass(LeadKycSubdoc);

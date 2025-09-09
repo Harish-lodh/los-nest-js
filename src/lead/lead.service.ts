@@ -1,65 +1,107 @@
 // src/leads/leads.service.ts
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Lead } from './entities/lead.entity';
-import { LeadKyc } from './entities/lead-kyc.entity';
-import { LeadDocument } from './entities/lead-document.entity';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
 import { CreateLeadDto } from './dto/create-lead.dto';
-import { LeadFieldsService } from './lead-fields.service';
 
+// Schemas
+import { Lead, LeadDocument } from './entities/lead.entity';
+import {
+  LeadDocument as LeadDoc,
+  LeadDocumentDocument,
+} from './entities/lead-document.entity';
+
+// If you still use LeadFieldsService elsewhere, inject it here; otherwise remove.
 @Injectable()
 export class LeadsService {
   constructor(
-    @InjectRepository(Lead) private readonly leadRepo: Repository<Lead>,
-    @InjectRepository(LeadKyc) private readonly kycRepo: Repository<LeadKyc>,
-    @InjectRepository(LeadDocument) private readonly docRepo: Repository<LeadDocument>,
-    private readonly leadFieldsService: LeadFieldsService,
+    @InjectModel(Lead.name)
+    private readonly leadModel: Model<LeadDocument>,
+
+    @InjectModel(LeadDoc.name)
+    private readonly leadDocModel: Model<LeadDocumentDocument>,
   ) {}
 
-  async create(dto: CreateLeadDto, files: {
-    leadImage?: Express.Multer.File[];
-    aadhaarFront?: Express.Multer.File[];
-    aadhaarBack?: Express.Multer.File[];
-    pan?: Express.Multer.File[];
-    documents?: Express.Multer.File[];
-  }) {
-    const lead = new Lead();
+  async create(
+    dto: CreateLeadDto,
+    files: {
+      leadImage?: Express.Multer.File[];
+      aadhaarFront?: Express.Multer.File[];
+      aadhaarBack?: Express.Multer.File[];
+      pan?: Express.Multer.File[];
+      documents?: Express.Multer.File[];
+    },
+  ) {
+    // Build lead document
+    const leadPayload: Partial<Lead> = {
+      ...dto.formData, // firstName, lastName, email, mobile, address fields, etc.
+      leadImagePath: files.leadImage?.[0]?.path ?? null,
+      kyc: {
+        ...(dto.kycData || {}),
+        aadhaarFrontPath: files.aadhaarFront?.[0]?.path ?? null,
+        aadhaarBackPath: files.aadhaarBack?.[0]?.path ?? null,
+        panPath: files.pan?.[0]?.path ?? null,
+      },
+      // customData is allowed as object; keep if provided
+      ...(dto as any).customData ? { customData: (dto as any).customData } : {},
+    };
 
-    // map formData
-    Object.assign(lead, dto.formData);
+    // Create lead
+    const createdLead = await this.leadModel.create(leadPayload);
+    const leadId = createdLead._id as Types.ObjectId;
 
-    // map single images
-    lead.leadImagePath = files.leadImage?.[0]?.path || null;
-
-    // KYC
-    const kyc = new LeadKyc();
-    Object.assign(kyc, dto.kycData);
-    kyc.aadhaarFrontPath = files.aadhaarFront?.[0]?.path || null;
-    kyc.aadhaarBackPath = files.aadhaarBack?.[0]?.path || null;
-    kyc.panPath = files.pan?.[0]?.path || null;
-    lead.kyc = kyc;
-
-    // Documents (map by index to meta)
-    const docs: LeadDocument[] = [];
-    const uploaded = files.documents || [];
-    dto.documentsMeta?.forEach((meta, idx) => {
-      const f = uploaded[idx];
+    // Map documents (variable list) using meta array + uploaded files in order
+    const docsToInsert: Array<Pick<LeadDoc, 'type' | 'originalName' | 'path'> & { lead: Types.ObjectId }> = [];
+    const uploadedDocs = files.documents || [];
+    (dto.documentsMeta || []).forEach((meta, idx) => {
+      const f = uploadedDocs[idx];
       if (!f) return;
-      const d = new LeadDocument();
-      d.type = meta.type;
-      d.originalName = f.originalname;
-      d.path = f.path;
-      docs.push(d);
+      docsToInsert.push({
+        type: meta.type,
+        originalName: f.originalname,
+        path: f.path,
+        lead: leadId,
+      });
     });
-    lead.documents = docs;
 
-    return await this.leadRepo.save(lead);
+    // Insert many (if any)
+    if (docsToInsert.length > 0) {
+      await this.leadDocModel.insertMany(docsToInsert);
+    }
+
+    // Return the lead object; you can also include docs if you want:
+    const result = createdLead.toObject();
+    return {
+      ...result,
+      documentsCount: docsToInsert.length,
+    };
   }
 
   async findAll() {
-    return this.leadRepo.find({
-      order: { created_at: 'DESC' }, // latest first
-    });
+    // Return leads sorted by created_at desc (we mapped timestamps to created_at/updated_at)
+    // If you want the documents inline, you can $lookup; keeping it simple here.
+    return this.leadModel.find().sort({ created_at: -1 }).lean().exec();
+  }
+
+  // Optional helpers if you need them later:
+
+  async findOne(id: string) {
+    if (!Types.ObjectId.isValid(id)) throw new NotFoundException('Lead not found');
+    const lead = await this.leadModel.findById(id).lean().exec();
+    if (!lead) throw new NotFoundException('Lead not found');
+    return lead;
+  }
+
+  async listDocuments(leadId: string) {
+    if (!Types.ObjectId.isValid(leadId)) throw new NotFoundException('Lead not found');
+    return this.leadDocModel.find({ lead: leadId }).sort({ createdAt: -1 }).lean().exec();
+  }
+
+  async remove(id: string) {
+    if (!Types.ObjectId.isValid(id)) throw new NotFoundException('Lead not found');
+    const deleted = await this.leadModel.findByIdAndDelete(id).lean();
+    if (!deleted) throw new NotFoundException('Lead not found');
+    await this.leadDocModel.deleteMany({ lead: new Types.ObjectId(id) });
+    return { deleted: true };
   }
 }

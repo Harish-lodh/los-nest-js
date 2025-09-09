@@ -1,21 +1,24 @@
-// src/leads/entities/lead-document.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
-import { Lead } from './lead.entity';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 
-@Entity('lead_documents')
+export type LeadDocumentDocument = HydratedDocument<LeadDocument>;
+
+@Schema({ timestamps: true, collection: 'lead_documents' })
 export class LeadDocument {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @Prop({ required: true, trim: true, maxlength: 64 })
+  type!: string;
 
-@Column({ type: 'varchar', length: 64 })
-type!: string;
+  @Prop({ required: true, trim: true, maxlength: 255 })
+  originalName!: string;
 
-@Column({ type: 'varchar', length: 255 })
-originalName!: string;
+  @Prop({ required: true, trim: true, maxlength: 1024 })
+  path!: string;
 
-@Column({ type: 'varchar', length: 1024 })
-path!: string;
-
-  @ManyToOne(() => Lead, (lead) => lead.documents)
-  lead: Lead;
+  @Prop({ type: Types.ObjectId, ref: 'Lead', required: true })
+  lead!: Types.ObjectId; // references Lead._id
 }
+
+export const LeadDocumentSchema = SchemaFactory.createForClass(LeadDocument);
+
+// Helpful index for lookups by lead
+LeadDocumentSchema.index({ lead: 1, createdAt: -1 });

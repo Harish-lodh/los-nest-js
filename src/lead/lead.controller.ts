@@ -1,7 +1,6 @@
 // src/leads/leads.controller.ts
 import {
-  Body, Controller, Post, UploadedFiles, UseInterceptors, BadRequestException,
-  Get,
+  Body, Controller, Post, UploadedFiles, UseInterceptors, BadRequestException, Get,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { uploadsStorage } from './multer.config';
@@ -22,9 +21,9 @@ export class LeadsController {
         { name: 'aadhaarFront', maxCount: 1 },
         { name: 'aadhaarBack', maxCount: 1 },
         { name: 'pan', maxCount: 1 },
-        { name: 'documents', maxCount: 20 }, // variable list
+        { name: 'documents', maxCount: 20 },
       ],
-      { storage: uploadsStorage }
+      { storage: uploadsStorage },
     ),
   )
   async createLead(
@@ -48,10 +47,8 @@ export class LeadsController {
     return this.leadsService.create(dto, files);
   }
 
-   @Get()
+  @Get()
   async getLeads() {
     return this.leadsService.findAll();
   }
-
-  
 }
