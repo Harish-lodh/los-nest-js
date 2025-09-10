@@ -1,21 +1,17 @@
+// src/leads/entities/lead-kyc.subdoc.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
-@Schema({ _id: false })
+@Schema({ _id: false }) // embedded, not a separate collection
 export class LeadKycSubdoc {
-  @Prop({ type: String, trim: true, default: null }) name?: string;
-  @Prop({ type: String, trim: true, default: null }) gender?: string;
-  @Prop({ type: String, trim: true, default: null }) dob?: string; // keep as string to match old model
-  @Prop({ type: String, trim: true, default: null }) aadhaarNumber?: string;
-  @Prop({ type: String, default: null }) address?: string;
-
-  @Prop({ type: String, trim: true, default: null }) panNumber?: string;
-  @Prop({ type: String, trim: true, default: null }) panHolderName?: string;
-  @Prop({ type: String, trim: true, default: null }) panFatherName?: string;
-  @Prop({ type: String, trim: true, default: null }) panDob?: string;
-
-  @Prop({ type: String, trim: true, default: null }) aadhaarFrontPath?: string | null;
-  @Prop({ type: String, trim: true, default: null }) aadhaarBackPath?: string | null;
-  @Prop({ type: String, trim: true, default: null }) panPath?: string | null;
+  @Prop() name?: string;
+  @Prop() gender?: string;
+  @Prop() dob?: string;
+  @Prop() aadhaarNumber?: string;
+  @Prop() address?: string;
+  @Prop() panNumber?: string;
+  @Prop() panHolderName?: string;
+  @Prop() panFatherName?: string;
+  @Prop() panDob?: string;
 }
 
 export const LeadKycSubdocSchema = SchemaFactory.createForClass(LeadKycSubdoc);

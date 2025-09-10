@@ -1,118 +1,115 @@
-// src/leads/lead-fields.service.ts
-import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
-import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Lead, LeadDocument } from './entities/lead.entity';
+import { LeadField, LeadFieldDocument } from './entities/lead-field.schema';
+
+// Fields defined in the Lead schema that cannot be added/deleted as dynamic fields
+const CORE_FIELDS = new Set([
+  'leadOwner',
+  'firstName',
+  'lastName',
+  'email',
+  // 'mobile',
+  // 'company',
+  // 'street',
+  // 'city',
+  // 'state',
+  // 'country',
+  // 'zipCode',
+  // 'description',
+  // 'leadImagePath',
+  // 'aadharNumber',
+  // 'addressLine2',
+  // 'alternateEmail',
+  // 'alternateMobile',
+  // 'annualIncome',
+  // 'businessType',
+  // 'cibilScore',
+  // 'dealerCode',
+  // 'eNachRegistered',
+  // 'emiDayOfMonth',
+  // 'emiStartDate',
+  // 'employmentType',
+  // 'gender',
+  // 'gstNumber',
+  // 'interestRatePct',
+  // 'loanType',
+  // 'panNumber',
+  // 'referenceContact',
+  // 'remarksInternal',
+  // 'sanctionAmount',
+  // 'yearsInBusiness',
+  // 'kyc',
+  // '_id',
+  // 'created_at',
+  // 'updated_at',
+  // 'customData',
+]);
 
 @Injectable()
 export class LeadFieldsService {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
-
-  // ✅ Keep this set *lowercase* because we compare lowercased names
-  private readonly PROTECTED_COLUMNS = new Set([
-    'id',
-    'created_at',
-    'updated_at',
-    'status',
-    'lan',
-    'partner_loan_id',
-    'leadowner',
-    'firstname',
-    'lastname',
-    'email',
-    'mobile',
-    'company',
-    'street',
-    'city',
-    'state',
-    'country',
-    'zipcode',
-    'description',
-    'leadimagepath',
-    'customdata',
-  ]);
-
-  private readonly UI_TYPE_TO_DB_TYPE: Record<string, string> = {
-    text: 'VARCHAR(255)',
-    email: 'VARCHAR(255)',
-    number: 'NUMERIC(15,2)',
-    int: 'INTEGER',
-    date: 'DATE',
-  };
-
-  // Simple default per type when NOT NULL is requested
-  private defaultFor(dbType: string): string {
-    const t = dbType.toUpperCase();
-    if (t.startsWith('VARCHAR')) return `''`;
-    if (t.startsWith('NUMERIC')) return `0`;
-    if (t.startsWith('INTEGER')) return `0`;
-    if (t === 'DATE') return `CURRENT_DATE`;
-    return `''`;
-  }
+  constructor(
+    @InjectModel(Lead.name) private readonly leadModel: Model<LeadDocument>,
+    @InjectModel(LeadField.name) private readonly fieldModel: Model<LeadFieldDocument>,
+  ) {}
 
   async getColumns() {
-    const query = `   
-      SELECT
-        column_name    AS name,
-        data_type      AS dbType,
-        is_nullable    AS isNullable
-      FROM information_schema.columns
-      WHERE table_name = 'leads'
-        AND table_schema = 'public'
-        AND column_name NOT IN ('customData', 'id', 'kycId', 'leadImagePath','created_at','updated_at')
-      ORDER BY ordinal_position
-    `;
-    const rows = await this.dataSource.query(query);
-   // console.log(rows)
-    return rows.map((col: any) => ({
-      name: col.name ?? col.column_name,
-      dbType: (col.dbtype ?? 'UNKNOWN').toUpperCase(),
-      isNullable: (col.isnullable ?? col.isNullable ) === 'YES',
-    }));
+    // Fetch all non-deleted fields from LeadField collection
+    const fields = await this.fieldModel
+      .find({ isDeleted: false })
+      .sort({ name: 1 })
+      .lean();
+
+    // Map to the desired format, excluding internal fields
+    return fields
+      .filter((f) => !['_id', 'created_at', 'updated_at', 'kyc', 'customData'].includes(f.name))
+      .map((f) => ({
+        name: f.name,
+        dbType: f.uiType,
+        isNullable: f.isNullable,
+      }));
   }
 
-  async addColumn(name: string, uiType: string, isNullable: boolean) {
-    const cleanName = name.trim().toLowerCase().replace(/\s+/g, '_');
-    if (!cleanName.match(/^[a-z_][a-z0-9_]*$/)) {
-      throw new BadRequestException(
-        'Invalid column name. Use letters, numbers, and underscores; must start with a letter/underscore.'
-      );
-    }
+  async addColumn(name: string, uiType: string, isNullable = true) {
+    name = (name || '').trim();
+    if (!name || !uiType) throw new BadRequestException('Name and uiType are required');
 
-    const existing = await this.getColumns();
-    if (existing.some((c: any) => c.name.toLowerCase() === cleanName)) {
-      throw new BadRequestException(`Column '${cleanName}' already exists`);
-    }
+    if (CORE_FIELDS.has(name))
+      throw new ForbiddenException(`'${name}' is a reserved field; cannot add as dynamic field.`);
 
-    const dbType = this.UI_TYPE_TO_DB_TYPE[uiType];
-    if (!dbType) throw new BadRequestException(`Invalid type: ${uiType}`);
+    // Upsert: if the field was soft-deleted, revive it
+    const doc = await this.fieldModel
+      .findOneAndUpdate(
+        { name },
+        { $set: { uiType, isNullable, isDeleted: false } },
+        { new: true, upsert: true, setDefaultsOnInsert: true },
+      )
+      .lean();
 
-    // ⚠️ Postgres: NOT NULL requires a default or a two-step change
-    return this.dataSource.transaction(async (qr) => {
-      if (isNullable) {
-        // Simple path
-        await qr.query(`ALTER TABLE leads ADD COLUMN "${cleanName}" ${dbType} NULL`);
-      } else {
-        // Safe NOT NULL path: add with DEFAULT, backfilled instantly by PG, then drop default
-        const def = this.defaultFor(dbType);
-        await qr.query(`ALTER TABLE leads ADD COLUMN "${cleanName}" ${dbType} DEFAULT ${def}`);
-        await qr.query(`ALTER TABLE leads ALTER COLUMN "${cleanName}" SET NOT NULL`);
-        await qr.query(`ALTER TABLE leads ALTER COLUMN "${cleanName}" DROP DEFAULT`);
-      }
+    // Optionally initialize the field in customData for existing leads
+    await this.leadModel.updateMany(
+      { [`customData.${name}`]: { $exists: false } },
+      { $set: { [`customData.${name}`]: null } },
+    );
 
-      return { message: `Column '${cleanName}' added successfully` };
-    });
+    return doc;
   }
 
   async deleteColumn(name: string) {
-    const cleanName = name.trim().toLowerCase();
-    if (this.PROTECTED_COLUMNS.has(cleanName)) {
-      throw new ForbiddenException(`Column '${cleanName}' is protected and cannot be deleted`);
-    }
-    const existing = await this.getColumns();
-    if (!existing.some((c: any) => c.name.toLowerCase() === cleanName)) {
-      throw new BadRequestException(`Column '${cleanName}' does not exist`);
-    }
-    await this.dataSource.query(`ALTER TABLE leads DROP COLUMN "${cleanName}"`);
-    return { message: `Column '${cleanName}' deleted successfully` };
+    name = (name || '').trim();
+    if (!name) throw new BadRequestException('Name is required');
+
+    if (CORE_FIELDS.has(name))
+      throw new ForbiddenException(`'${name}' is a reserved field; cannot delete.`);
+
+    const updated = await this.fieldModel
+      .findOneAndUpdate({ name }, { $set: { isDeleted: true } }, { new: true })
+      .lean();
+
+    if (!updated) throw new NotFoundException('Field not found');
+
+    // Soft delete: keep data in customData intact, just hide in UI
+    return { deleted: true };
   }
 }

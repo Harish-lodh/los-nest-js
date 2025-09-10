@@ -1,3 +1,4 @@
+// src/leads/entities/lead-document.entity.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 
@@ -11,14 +12,12 @@ export class LeadDocument {
   @Prop({ required: true, trim: true, maxlength: 255 })
   originalName!: string;
 
-  @Prop({ required: true, trim: true, maxlength: 1024 })
-  path!: string;
+  @Prop({ required: true, type: Buffer })
+  fileContent!: Buffer;
 
   @Prop({ type: Types.ObjectId, ref: 'Lead', required: true })
-  lead!: Types.ObjectId; // references Lead._id
+  lead!: Types.ObjectId;
 }
 
 export const LeadDocumentSchema = SchemaFactory.createForClass(LeadDocument);
-
-// Helpful index for lookups by lead
 LeadDocumentSchema.index({ lead: 1, createdAt: -1 });

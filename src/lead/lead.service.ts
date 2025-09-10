@@ -1,26 +1,26 @@
-// src/leads/leads.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+// src/leads/lead.service.ts
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { CreateLeadDto } from './dto/create-lead.dto';
+import { Model } from 'mongoose';
+import { Express } from 'express';
 
-// Schemas
+// Lead entity
 import { Lead, LeadDocument } from './entities/lead.entity';
+
+// LeadDocument entity (aliased to avoid name conflict)
 import {
-  LeadDocument as LeadDoc,
+  LeadDocument as LeadDocEntity,
   LeadDocumentDocument,
 } from './entities/lead-document.entity';
 
-// If you still use LeadFieldsService elsewhere, inject it here; otherwise remove.
+import { CreateLeadDto } from './dto/create-lead.dto';
+
 @Injectable()
 export class LeadsService {
   constructor(
-    @InjectModel(Lead.name)
-    private readonly leadModel: Model<LeadDocument>,
-
-    @InjectModel(LeadDoc.name)
-    private readonly leadDocModel: Model<LeadDocumentDocument>,
-  ) {}
+    @InjectModel(Lead.name) private leadModel: Model<LeadDocument>,
+    @InjectModel(LeadDocEntity.name) private leadDocumentModel: Model<LeadDocumentDocument>,
+  ) { }
 
   async create(
     dto: CreateLeadDto,
@@ -31,77 +31,89 @@ export class LeadsService {
       pan?: Express.Multer.File[];
       documents?: Express.Multer.File[];
     },
-  ) {
-    // Build lead document
-    const leadPayload: Partial<Lead> = {
-      ...dto.formData, // firstName, lastName, email, mobile, address fields, etc.
-      leadImagePath: files.leadImage?.[0]?.path ?? null,
-      kyc: {
-        ...(dto.kycData || {}),
-        aadhaarFrontPath: files.aadhaarFront?.[0]?.path ?? null,
-        aadhaarBackPath: files.aadhaarBack?.[0]?.path ?? null,
-        panPath: files.pan?.[0]?.path ?? null,
-      },
-      // customData is allowed as object; keep if provided
-      ...(dto as any).customData ? { customData: (dto as any).customData } : {},
-    };
+  ): Promise<LeadDocument> {
+    const session = await this.leadModel.db.startSession();
+    session.startTransaction();
+console.log("dto--",dto)
+    try {
+      // Save main lead
+      const [lead] = await this.leadModel.create(
+        [{ leads: dto.formData, kycData: dto.kycData }],
+        { session },
+      );
 
-    // Create lead
-    const createdLead = await this.leadModel.create(leadPayload);
-    const leadId = createdLead._id as Types.ObjectId;
+      const kycDocuments: Partial<LeadDocEntity>[] = [];
+      const additionalDocuments: Partial<LeadDocEntity>[] = [];
 
-    // Map documents (variable list) using meta array + uploaded files in order
-    const docsToInsert: Array<Pick<LeadDoc, 'type' | 'originalName' | 'path'> & { lead: Types.ObjectId }> = [];
-    const uploadedDocs = files.documents || [];
-    (dto.documentsMeta || []).forEach((meta, idx) => {
-      const f = uploadedDocs[idx];
-      if (!f) return;
-      docsToInsert.push({
-        type: meta.type,
-        originalName: f.originalname,
-        path: f.path,
-        lead: leadId,
-      });
-    });
+      // --- KYC docs
+      if (files['aadhaarFront']?.length) {
+        kycDocuments.push({
+          type: 'aadhaarFront',
+          originalName: files['aadhaarFront'][0].originalname,
+          fileContent: files['aadhaarFront'][0].buffer,
+          lead: lead._id,
+        });
+      }
+      if (files['aadhaarBack']?.length) {
+        kycDocuments.push({
+          type: 'aadhaarBack',
+          originalName: files['aadhaarBack'][0].originalname,
+          fileContent: files['aadhaarBack'][0].buffer,
+          lead: lead._id,
+        });
+      }
+      if (files['pan']?.length) {
+        kycDocuments.push({
+          type: 'pan',
+          originalName: files['pan'][0].originalname,
+          fileContent: files['pan'][0].buffer,
+          lead: lead._id,
+        });
+      }
 
-    // Insert many (if any)
-    if (docsToInsert.length > 0) {
-      await this.leadDocModel.insertMany(docsToInsert);
+      // --- Additional docs
+      if (files['documents']?.length) {
+        files['documents'].forEach((file, index) => {
+          additionalDocuments.push({
+            type: dto.documentsMeta?.[index]?.type || `document${index + 1}`,
+            originalName: file.originalname,
+            fileContent: file.buffer,
+            lead: lead._id,
+          });
+        });
+      }
+
+      // Save all documents
+      const allDocs = [...kycDocuments, ...additionalDocuments];
+      if (allDocs.length > 0) {
+        await this.leadDocumentModel.insertMany(allDocs, { session });
+      }
+
+      await session.commitTransaction();
+      return lead;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
     }
-
-    // Return the lead object; you can also include docs if you want:
-    const result = createdLead.toObject();
-    return {
-      ...result,
-      documentsCount: docsToInsert.length,
-    };
   }
 
   async findAll() {
-    // Return leads sorted by created_at desc (we mapped timestamps to created_at/updated_at)
-    // If you want the documents inline, you can $lookup; keeping it simple here.
-    return this.leadModel.find().sort({ created_at: -1 }).lean().exec();
+    return this.leadModel.find().lean().exec();
   }
 
-  // Optional helpers if you need them later:
-
-  async findOne(id: string) {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundException('Lead not found');
-    const lead = await this.leadModel.findById(id).lean().exec();
-    if (!lead) throw new NotFoundException('Lead not found');
-    return lead;
-  }
-
-  async listDocuments(leadId: string) {
-    if (!Types.ObjectId.isValid(leadId)) throw new NotFoundException('Lead not found');
-    return this.leadDocModel.find({ lead: leadId }).sort({ createdAt: -1 }).lean().exec();
-  }
-
-  async remove(id: string) {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundException('Lead not found');
-    const deleted = await this.leadModel.findByIdAndDelete(id).lean();
-    if (!deleted) throw new NotFoundException('Lead not found');
-    await this.leadDocModel.deleteMany({ lead: new Types.ObjectId(id) });
-    return { deleted: true };
+  async findAllWithDocs() {
+    return this.leadModel.aggregate([
+      {
+        $lookup: {
+          from: 'lead_documents',
+          localField: '_id',
+          foreignField: 'lead',
+          as: 'documents',
+        },
+      },
+      { $sort: { created_at: -1 } },
+    ]);
   }
 }

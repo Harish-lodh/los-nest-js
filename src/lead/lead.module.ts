@@ -7,16 +7,21 @@ import { LeadDocument, LeadDocumentSchema } from './entities/lead-document.entit
 
 import { LeadsService } from './lead.service';
 import { LeadsController } from './lead.controller';
+import { LeadField, LeadFieldSchema } from './entities/lead-field.schema'; // <-- add this
+import { LeadFieldsService } from './lead-fields.service';
+import { LeadFieldsController } from './lead-fields.controller';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Lead.name, schema: LeadSchema },
       { name: LeadDocument.name, schema: LeadDocumentSchema },
+      { name: LeadField.name, schema: LeadFieldSchema },
+
     ]),
   ],
-  providers: [LeadsService],
-  controllers: [LeadsController],
+  providers: [LeadsService, LeadFieldsService],
+  controllers: [LeadsController, LeadFieldsController],
   exports: [LeadsService, MongooseModule],
 })
-export class LeadsModule {}
+export class LeadsModule { }

@@ -1,9 +1,14 @@
 // src/leads/leads.controller.ts
 import {
-  Body, Controller, Post, UploadedFiles, UseInterceptors, BadRequestException, Get,
+  Body,
+  Controller,
+  Post,
+  UploadedFiles,
+  UseInterceptors,
+  BadRequestException,
+  Get,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
-import { uploadsStorage } from './multer.config';
 import { LeadsService } from './lead.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { plainToInstance } from 'class-transformer';
@@ -23,11 +28,12 @@ export class LeadsController {
         { name: 'pan', maxCount: 1 },
         { name: 'documents', maxCount: 20 },
       ],
-      { storage: uploadsStorage },
+      { storage: undefined }, // keep files in memory
     ),
   )
   async createLead(
-    @UploadedFiles() files: {
+    @UploadedFiles()
+    files: {
       leadImage?: Express.Multer.File[];
       aadhaarFront?: Express.Multer.File[];
       aadhaarBack?: Express.Multer.File[];
@@ -36,11 +42,20 @@ export class LeadsController {
     },
     @Body('payload') payload: string,
   ) {
+
+    console.log(payload)
     if (!payload) throw new BadRequestException('Missing payload JSON');
 
     const parsed = JSON.parse(payload);
-    const dto = plainToInstance(CreateLeadDto, parsed);
-    await validateOrReject(dto).catch((e) => {
+    const dto = plainToInstance(CreateLeadDto, parsed, {
+      enableImplicitConversion: true,
+      exposeDefaultValues: true,
+    });
+
+    await validateOrReject(dto, {
+      whitelist: true,
+      forbidNonWhitelisted: false,
+    }).catch((e) => {
       throw new BadRequestException(e);
     });
 
@@ -49,6 +64,6 @@ export class LeadsController {
 
   @Get()
   async getLeads() {
-    return this.leadsService.findAll();
+    return this.leadsService.findAllWithDocs();
   }
 }
